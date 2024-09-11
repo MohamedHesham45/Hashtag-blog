@@ -112,7 +112,7 @@ export default function Profile({ url }) {
 
         {error && posts.length <= 0 && (
           <div className="max-w-3xl mx-auto px-4 py-3 rounded " role="alert">
-          <h2 className='text-2xl text-center mb-5 text-red-500 font-bold'>No posts here yet, be the first to share something awesome!</h2>
+          <h2 className='text-2xl text-center mb-5 text-red-500 font-bold'>No here posts yet</h2>
             <img src='3973481.jpg'></img>
           </div>
         )}
@@ -141,7 +141,6 @@ export default function Profile({ url }) {
             </div>
           ))}
 
-          {/* Edit Post Modal */}
           {editPost && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
               <div className="bg-white p-6 rounded-lg shadow-lg relative max-w-md w-full">

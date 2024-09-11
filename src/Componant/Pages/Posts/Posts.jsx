@@ -212,13 +212,20 @@ const schema = Joi.object({
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-300 p-4">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-slate-300 p-4 flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-300 p-4">
       <div className="container max-w-3xl mx-auto">
-        {posts.length === 0 && <p>No posts available</p>}
+        {posts.length === 0 && <div className="max-w-3xl mx-auto px-4 py-3 rounded " role="alert">
+          <h2 className='text-2xl text-center mb-5 text-red-500 font-bold'>No posts here yet, be the first to share something awesome!</h2>
+            <img src='3973481.jpg'></img>
+          </div>}
 
         {posts.map((post) => (
           <div key={post._id} className="card w-full bg-white shadow-xl mb-6">
