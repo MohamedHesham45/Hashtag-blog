@@ -257,7 +257,7 @@ export default function Profile({ url }) {
                 <p className="text-sm text-gray-500 mb-2">
                   {new Date(post.createdAt).toLocaleString()}
                 </p>
-                <p className="break-words text-gray-700">{post.description}</p>
+                <p className="break-words text-gray-700 text-end">{post.description}</p>
                 {post.image && (
                   <img
                     src={post.image}

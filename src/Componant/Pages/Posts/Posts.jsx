@@ -9,7 +9,7 @@ export default function Posts(props) {
   const [posts, setPosts] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [likeLoading, setLikeLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState('');
   const [commitLoading, setCommitLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -128,7 +128,7 @@ export default function Posts(props) {
 
   const handleLikeClick = async (post) => {
     const postId = post._id;
-    setLikeLoading(true);
+    setLikeLoading(post._id);
 
     const likeRequest = axios.post(
       `${props.url}/posts/like/${postId}`,
@@ -162,7 +162,7 @@ export default function Posts(props) {
         console.error("Error liking post:", error);
       })
       .finally(() => {
-        setLikeLoading(false);
+        setLikeLoading('');
       });
   };
 
@@ -343,7 +343,7 @@ export default function Posts(props) {
                 </span>
               </div>
               <div className="card-actions justify-between">
-                {likeLoading ? (
+                {likeLoading===post._id ? (
                   <span className="loading loading-spinner loading-lg"></span>
                 ) : (
                   <button
