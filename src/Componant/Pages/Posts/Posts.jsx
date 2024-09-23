@@ -1,57 +1,53 @@
-import Joi from 'joi';
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import Joi from "joi";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function Posts(props) {
   const [showModal, setShowModal] = useState(false);
   const [currentPost, setCurrentPost] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [commentText, setCommentText] = useState('');
+  const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [commitLoading, setCommitLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [currentImage, setCurrentImage] = useState('');
+  const [currentImage, setCurrentImage] = useState("");
   const [addPostLoader, setAddPostLoader] = useState(false);
   const [showAddPostModal, setShowAddPostModal] = useState(false);
   const [addPostError, setAddPostError] = useState(null);
 
   const [newPost, setNewPost] = useState({
-    title: '',
-    description: '',
-    image: null
+    title: "",
+    description: "",
+    image: null,
   });
 
-const schema = Joi.object({
-  title: Joi.string()
-    .min(3)
-    .max(100)
-    .required()
-    .messages({
-      'string.base': 'Title should be a type of text',
-      'string.empty': 'Title cannot be empty',
-      'string.min': 'Title should have a minimum length of 3 characters',
-      'string.max': 'Title should have a maximum length of 100 characters',
-      'any.required': 'Title is a required field',
+  const schema = Joi.object({
+    title: Joi.string().min(3).max(100).required().messages({
+      "string.base": "Title should be a type of text",
+      "string.empty": "Title cannot be empty",
+      "string.min": "Title should have a minimum length of 3 characters",
+      "string.max": "Title should have a maximum length of 100 characters",
+      "any.required": "Title is a required field",
     }),
 
-  description: Joi.string()
-    .min(10)
-    .max(500)
-    .required()
-    .messages({
-      'string.base': 'Description should be a type of text',
-      'string.empty': 'Description cannot be empty',
-      'string.min': 'Description should have a minimum length of 10 characters',
-      'string.max': 'Description should have a maximum length of 500 characters',
-      'any.required': 'Description is a required field',
+    description: Joi.string().min(10).max(500).required().messages({
+      "string.base": "Description should be a type of text",
+      "string.empty": "Description cannot be empty",
+      "string.min": "Description should have a minimum length of 10 characters",
+      "string.max":
+        "Description should have a maximum length of 500 characters",
+      "any.required": "Description is a required field",
     }),
     image: Joi.any().messages({
-      "any.required": "Profile picture is required."
-    })
-});
+      "any.required": "Profile picture is required.",
+    }),
+  });
 
   useEffect(() => {
-    const loggedInUser = JSON.parse(localStorage.getItem('user'));
+    const loggedInUser = JSON.parse(localStorage.getItem("user"));
     setUser(loggedInUser);
 
     const fetchPosts = async () => {
@@ -59,14 +55,14 @@ const schema = Joi.object({
       try {
         const response = await axios.get(`${props.url}/posts`, {
           headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
         setPosts(response.data.data);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching posts:', error);
+        console.error("Error fetching posts:", error);
         setLoading(false);
       }
     };
@@ -82,64 +78,92 @@ const schema = Joi.object({
   const closeModal = () => {
     setShowModal(false);
     setCurrentPost(null);
-    setCommentText('');
+    setCommentText("");
   };
 
   const handleCommentSubmit = async () => {
     if (!currentPost || !commentText.trim()) return;
 
-    try {
-      const response = await axios.post(
-        `${props.url}/posts/comment/${currentPost._id}`,
-        { text: commentText },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+    setCommitLoading(true);
 
-      const updatedPost = {
-        ...currentPost,
-        comments: [...currentPost.comments, response.data.comment],
-      };
+    const commentRequest = axios.post(
+      `${props.url}/posts/comment/${currentPost._id}`,
+      { text: commentText },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === currentPost._id ? updatedPost : post
-        )
-      );
+    toast
+      .promise(commentRequest, {
+        loading: "Submitting comment...",
+        success: "Comment added successfully!",
+        error: (err) => err.response?.data?.message || "Failed to add comment",
+      })
+      .then((response) => {
+        const updatedPost = {
+          ...currentPost,
+          comments: [...currentPost.comments, response.data.comment],
+        };
 
-      setCommentText('');
-      closeModal();
-    } catch (error) {
-      console.error('Error adding comment:', error);
-    }
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post._id === currentPost._id ? updatedPost : post
+          )
+        );
+
+        setCommentText("");
+        closeModal();
+      })
+      .catch((error) => {
+        console.error("Error adding comment:", error);
+      })
+      .finally(() => {
+        setCommitLoading(false);
+      });
   };
 
+  const handleLikeClick = async (post) => {
+    const postId = post._id;
+    setLikeLoading(true);
 
-  const handleLikeClick = async (postId) => {
-    try {
-      const response = await axios.post(
-        `${props.url}/posts/like/${postId}`,
-        {},
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+    const likeRequest = axios.post(
+      `${props.url}/posts/like/${postId}`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post._id === postId ? { ...post, likes: response.data.data } : post
-        )
-      );
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
+    toast
+      .promise(likeRequest, {
+        loading: isPostLikedByUser(post)
+          ? "UnLiking post..."
+          : "Liking post...",
+        success: isPostLikedByUser(post)
+          ? "Post unliked successfully"
+          : "Post liked successfully!",
+        error: (err) => err.response?.data?.message || "Failed to like post",
+      })
+      .then((response) => {
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post._id === postId ? { ...post, likes: response.data.data } : post
+          )
+        );
+      })
+      .catch((error) => {
+        console.error("Error liking post:", error);
+      })
+      .finally(() => {
+        setLikeLoading(false);
+      });
   };
 
   const isPostLikedByUser = (post) => {
@@ -153,68 +177,116 @@ const schema = Joi.object({
 
   const closeImageModal = () => {
     setShowImageModal(false);
-    setCurrentImage('');
+    setCurrentImage("");
   };
 
   const handleNewPostChange = (e) => {
     const { name, value, files } = e.target;
     setNewPost({
       ...newPost,
-      [name]: name === 'image' ? files[0] : value
+      [name]: name === "image" ? files[0] : value,
     });
   };
 
   const handleAddPostSubmit = async () => {
-    setAddPostError(null); 
+    setAddPostError(null);
 
     const formData = new FormData();
-    formData.append('title', newPost.title);
-    formData.append('description', newPost.description);
-    formData.append('image', newPost.image);
-    
-    const { error: validationError } = schema.validate({ title:newPost.title, description:newPost.description,image:newPost.image });
+    formData.append("title", newPost.title);
+    formData.append("description", newPost.description);
+    if (newPost.image) {
+      formData.append("image", newPost.image);
+    }
+
+    const { error: validationError } = schema.validate({
+      title: newPost.title,
+      description: newPost.description,
+      image: newPost.image,
+    });
     if (validationError) {
       setAddPostError(validationError.details[0].message);
       return;
     }
-    setAddPostLoader(true)
-    try {
-      let response
-      if(newPost.image){
 
-         response = await axios.post(`${props.url}/posts`, formData, {
+    setAddPostLoader(true);
+
+    const postRequest = newPost.image
+      ? axios.post(`${props.url}/posts`, formData, {
           headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
+        })
+      : axios.post(
+          `${props.url}/posts`,
+          { title: newPost.title, description: newPost.description },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+    toast
+      .promise(postRequest, {
+        loading: "Adding post...",
+        success: "Post added successfully!",
+        error: (err) => err.response?.data?.message || "Failed to add post.",
+      })
+      .then((response) => {
+        setPosts([response.data.data, ...posts]);
+
+        setNewPost({
+          title: "",
+          description: "",
+          image: null,
         });
-      }else{
-         response = await axios.post(`${props.url}/posts`, { title:newPost.title, description:newPost.description }, {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-      }
-      setPosts([response.data.data, ...posts]);
-      setAddPostLoader(false);
-      setNewPost({
-        title: '',
-        description: '',
-        image: null
+        setShowAddPostModal(false);
+      })
+      .catch((error) => {
+        setAddPostError(
+          error.response?.data?.message ||
+            "An error occurred while adding the post."
+        );
+        console.error("Error adding new post:", error);
+      })
+      .finally(() => {
+        setAddPostLoader(false);
       });
-      setShowAddPostModal(false);
-    } catch (error) {
-      setAddPostLoader(false);
-      setAddPostError(error.response?.data?.message || 'An error occurred while adding the post.');
-      console.error('Error adding new post:', error);
-    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-300 p-4 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+      <div className="bg-slate-300 h-screen">
+        {[1,2].map((_, index)=>(<div key={index} className="container max-w-3xl mx-auto card w-full bg-white shadow-xl mb-6 animate-pulse">
+          <div className="card-body">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-gray-300 rounded-full mr-4"></div>
+                <div>
+                  <div className="h-4 bg-gray-300 rounded w-32 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+                </div>
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="h-3 bg-gray-300 rounded w-full mb-2"></div>
+              <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
+            </div>
+            <div className="mb-4">
+              <div className="w-full h-40 bg-gray-300 rounded-lg"></div>
+            </div>
+            <div className="mb-4 flex justify-between items-center">
+              <div className="h-3 bg-gray-300 rounded w-20"></div>
+              <div className="h-3 bg-gray-300 rounded w-16"></div>
+            </div>
+            <div className="card-actions justify-between">
+              <div className="h-8 w-24 bg-gray-300 rounded"></div>
+              <div className="h-8 w-24 bg-gray-300 rounded"></div>
+            </div>
+          </div>
+        </div>))}
       </div>
     );
   }
@@ -222,10 +294,14 @@ const schema = Joi.object({
   return (
     <div className="min-h-screen bg-slate-300 p-4">
       <div className="container max-w-3xl mx-auto">
-        {posts.length === 0 && <div className="max-w-3xl mx-auto px-4 py-3 rounded " role="alert">
-          <h2 className='text-2xl text-center mb-5 text-red-500 font-bold'>No posts here yet, be the first to share something awesome!</h2>
-            <img src='3973481.jpg'></img>
-          </div>}
+        {posts.length === 0 && (
+          <div className="max-w-3xl mx-auto px-4 py-3 rounded " role="alert">
+            <h2 className="text-2xl text-center mb-5 text-red-500 font-bold">
+              No posts here yet, be the first to share something awesome!
+            </h2>
+            <img src="3973481.jpg"></img>
+          </div>
+        )}
 
         {posts.map((post) => (
           <div key={post._id} className="card w-full bg-white shadow-xl mb-6">
@@ -245,44 +321,56 @@ const schema = Joi.object({
                   </div>
                 </div>
               </div>
-              <p className="mb-4 break-words">{post.description}</p>
-              {post.image&&<div className="mb-4">
-                <img
-                  src={post.image}
-                  alt="Post"
-                  className="w-full  object-cover rounded-lg cursor-pointer"
-                  onClick={() => handleImageClick(post.image)}
-                />
-              </div>}
+              <p className="mb-4 break-words text-end">{post.description}</p>
+              {post.image && (
+                <div className="mb-4">
+                  <img
+                    src={post.image}
+                    alt="Post"
+                    className="w-full  object-cover rounded-lg cursor-pointer"
+                    onClick={() => handleImageClick(post.image)}
+                  />
+                </div>
+              )}
               <div className="mb-4 flex justify-between items-center">
                 <span className="text-gray-500">
-                  {post.likes.length} {post.likes.length === 1 ? 'Like' : 'Likes'}
+                  {post.likes.length}{" "}
+                  {post.likes.length === 1 ? "Like" : "Likes"}
                 </span>
                 <span className="text-gray-500">
-                  {post.comments.length} {post.comments.length === 1 ? 'Comment' : 'Comments'}
+                  {post.comments.length}{" "}
+                  {post.comments.length === 1 ? "Comment" : "Comments"}
                 </span>
               </div>
               <div className="card-actions justify-between">
-                <button
-                  className={`btn btn-outline  ${isPostLikedByUser(post) ? ' border-red-500 text-red-500' : 'border-sky-800 text-sky-800'}`}
-                  onClick={() => handleLikeClick(post._id)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill='none'
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="size-6"
+                {likeLoading ? (
+                  <span className="loading loading-spinner loading-lg"></span>
+                ) : (
+                  <button
+                    className={`btn btn-outline  ${
+                      isPostLikedByUser(post)
+                        ? " border-red-500 text-red-500"
+                        : "border-sky-800 text-sky-800"
+                    }`}
+                    onClick={() => handleLikeClick(post)}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"
-                    />
-                  </svg>
-                  {isPostLikedByUser(post) ? 'Liked' : 'Like'}
-                </button>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="size-6"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z"
+                      />
+                    </svg>
+                    {isPostLikedByUser(post) ? "Liked" : "Like"}
+                  </button>
+                )}
                 <button
                   className="btn btn-outline bg-sky-800 text-white"
                   onClick={() => handleCommentClick(post)}
@@ -302,7 +390,6 @@ const schema = Joi.object({
                   Comment
                 </button>
               </div>
-
             </div>
           </div>
         ))}
@@ -340,10 +427,17 @@ const schema = Joi.object({
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
               ></textarea>
-              
-              <button className="btn bg-sky-800 text-white" onClick={handleCommentSubmit}>
-                Add Comment
-              </button>
+
+              {commitLoading ? (
+                <span className="loading loading-spinner loading-lg"></span>
+              ) : (
+                <button
+                  className="btn btn-outline bg-sky-800 text-white"
+                  onClick={handleCommentSubmit}
+                >
+                  Add Comment
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -398,12 +492,13 @@ const schema = Joi.object({
                 className="file-input file-input-bordered w-full mb-4"
                 onChange={handleNewPostChange}
               />
-               {addPostError && (
-                <p className="text-red-500 text-sm my-2">
-                  {addPostError}
-                </p>
+              {addPostError && (
+                <p className="text-red-500 text-sm my-2">{addPostError}</p>
               )}
-              <button className={`btn btn-primary  ${addPostLoader ? 'loading' : ''}`} onClick={handleAddPostSubmit}>
+              <button
+                className={`btn btn-primary  ${addPostLoader ? "loading" : ""}`}
+                onClick={handleAddPostSubmit}
+              >
                 Add Post
               </button>
             </div>
@@ -420,4 +515,3 @@ const schema = Joi.object({
     </div>
   );
 }
-

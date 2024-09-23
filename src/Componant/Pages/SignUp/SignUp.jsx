@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import Joi from 'joi';
+import toast from 'react-hot-toast';
 
 const SignUp = (props) => {
   const nameRef = useRef(null);
@@ -47,40 +48,50 @@ const SignUp = (props) => {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-
+  
     const name = nameRef.current.value;
     const email = emailRef.current.value;
     const password = passwordRef.current.value;
     const image = imageRef.current.files[0];
-
+  
     const formData = new FormData();
     formData.append('name', name);
     formData.append('email', email);
     formData.append('password', password);
     formData.append('image', image);
-
-   const { error: validationError } = schema.validate({ name, email, password, image });
+  
+    const { error: validationError } = schema.validate({ name, email, password, image });
     if (validationError) {
       setError(validationError.details[0].message);
       return;
     }
-
+  
     setLoading(true);
     setError(null);
-
-    try {
-      const response = await axios.post(`${props.url}/signup`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      navigate('/', { replace: true });
-    } catch (error) {
+  
+    const signUpRequest = axios.post(`${props.url}/signup`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  
+    toast.promise(signUpRequest, {
+      loading: "Signing up...",
+      success: "Signup successful!",
+      error: (err) =>
+        err.response?.data?.message || "Signup failed!",
+    })
+    .then((response) => {
+      navigate('/', { replace: true }); 
+    })
+    .catch((error) => {
       setError(error.response?.data?.message || 'Signup failed');
-    } finally {
+    })
+    .finally(() => {
       setLoading(false);
-    }
+    });
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{

@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import Joi from 'joi';
+import toast from 'react-hot-toast';
 
 const Login = (props) => {
   const emailRef = useRef(null);
@@ -30,31 +31,34 @@ const Login = (props) => {
     e.preventDefault();
     const email = emailRef.current.value;
     const password = passwordRef.current.value;
-    const { error: validationError } = schema.validate({  email, password });
+    const { error: validationError } = schema.validate({ email, password });
     if (validationError) {
       setError(validationError.details[0].message);
       return;
     }
     setLoading(true);
     setError(null);
-
-    try {
-      const response = await axios.post(`${props.url}/login`, { 
-        email,
-        password,
-      });
-
+  
+    const loginRequest = axios.post(`${props.url}/login`, { email, password });
+  
+    toast.promise(loginRequest, {
+      loading: "Logging in...",
+      success: "Login successful!",
+      error: (err) =>
+        err.response?.data?.message || "Login failed!",
+    }).then((response) => {
       localStorage.setItem('token', response.data.token); 
       localStorage.setItem('user', JSON.stringify(response.data.user));
       window.dispatchEvent(new Event('loginStatusChange'));
       props.setIsLogin(true); 
       navigate('/home', { replace: true }); 
-    } catch (error) {
+    }).catch((error) => {
       setError(error.response?.data?.message || 'Login failed');
-    } finally {
+    }).finally(() => {
       setLoading(false);
-    }
+    });
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{
