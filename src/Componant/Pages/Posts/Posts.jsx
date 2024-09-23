@@ -4,12 +4,13 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 export default function Posts(props) {
+  const [validationErrors, setValidationErrors] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [currentPost, setCurrentPost] = useState(null);
   const [posts, setPosts] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [likeLoading, setLikeLoading] = useState('');
+  const [likeLoading, setLikeLoading] = useState("");
   const [commitLoading, setCommitLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -162,7 +163,7 @@ export default function Posts(props) {
         console.error("Error liking post:", error);
       })
       .finally(() => {
-        setLikeLoading('');
+        setLikeLoading("");
       });
   };
 
@@ -190,6 +191,7 @@ export default function Posts(props) {
 
   const handleAddPostSubmit = async () => {
     setAddPostError(null);
+    setValidationErrors({});
 
     const formData = new FormData();
     formData.append("title", newPost.title);
@@ -198,13 +200,21 @@ export default function Posts(props) {
       formData.append("image", newPost.image);
     }
 
-    const { error: validationError } = schema.validate({
-      title: newPost.title,
-      description: newPost.description,
-      image: newPost.image,
-    });
+    const { error: validationError } = schema.validate(
+      {
+        title: newPost.title,
+        description: newPost.description,
+        image: newPost.image,
+      },
+      { abortEarly: false }
+    );
+
     if (validationError) {
-      setAddPostError(validationError.details[0].message);
+      const errors = {};
+      validationError.details.forEach((err) => {
+        errors[err.path[0]] = err.message;
+      });
+      setValidationErrors(errors);
       return;
     }
 
@@ -236,7 +246,6 @@ export default function Posts(props) {
       })
       .then((response) => {
         setPosts([response.data.data, ...posts]);
-
         setNewPost({
           title: "",
           description: "",
@@ -258,35 +267,40 @@ export default function Posts(props) {
 
   if (loading) {
     return (
-      <div className="bg-slate-300 h-screen">
-        {[1,2].map((_, index)=>(<div key={index} className="container max-w-3xl mx-auto card w-full bg-white shadow-xl mb-6 animate-pulse">
-          <div className="card-body">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-gray-300 rounded-full mr-4"></div>
-                <div>
-                  <div className="h-4 bg-gray-300 rounded w-32 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+      <div className="bg-slate-300 h-screen pt-3">
+        {[1, 2].map((_, index) => (
+          <div
+            key={index}
+            className="container max-w-3xl mx-auto card w-full bg-white shadow-xl  mb-6 animate-pulse"
+          >
+            <div className="card-body">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-gray-300 rounded-full mr-4"></div>
+                  <div>
+                    <div className="h-4 bg-gray-300 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-20"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="mb-4">
-              <div className="h-3 bg-gray-300 rounded w-full mb-2"></div>
-              <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
-            </div>
-            <div className="mb-4">
-              <div className="w-full h-40 bg-gray-300 rounded-lg"></div>
-            </div>
-            <div className="mb-4 flex justify-between items-center">
-              <div className="h-3 bg-gray-300 rounded w-20"></div>
-              <div className="h-3 bg-gray-300 rounded w-16"></div>
-            </div>
-            <div className="card-actions justify-between">
-              <div className="h-8 w-24 bg-gray-300 rounded"></div>
-              <div className="h-8 w-24 bg-gray-300 rounded"></div>
+              <div className="mb-4">
+                <div className="h-3 bg-gray-300 rounded w-full mb-2"></div>
+                <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
+              </div>
+              <div className="mb-4">
+                <div className="w-full h-40 bg-gray-300 rounded-lg"></div>
+              </div>
+              <div className="mb-4 flex justify-between items-center">
+                <div className="h-3 bg-gray-300 rounded w-20"></div>
+                <div className="h-3 bg-gray-300 rounded w-16"></div>
+              </div>
+              <div className="card-actions justify-between">
+                <div className="h-8 w-24 bg-gray-300 rounded"></div>
+                <div className="h-8 w-24 bg-gray-300 rounded"></div>
+              </div>
             </div>
           </div>
-        </div>))}
+        ))}
       </div>
     );
   }
@@ -343,7 +357,7 @@ export default function Posts(props) {
                 </span>
               </div>
               <div className="card-actions justify-between">
-                {likeLoading===post._id ? (
+                {likeLoading === post._id ? (
                   <span className="loading loading-spinner loading-lg"></span>
                 ) : (
                   <button
@@ -470,31 +484,51 @@ export default function Posts(props) {
                 ✕
               </button>
               <h2 className="font-bold text-lg mb-4">Add New Post</h2>
+
               <input
                 type="text"
                 name="title"
                 placeholder="Title"
-                className="input input-bordered w-full mb-4"
+                className="input input-bordered w-full mb-1"
                 value={newPost.title}
                 onChange={handleNewPostChange}
               />
+              {validationErrors.title && (
+                <p className="text-red-500 text-sm mb-4">
+                  {validationErrors.title}
+                </p>
+              )}
+
               <textarea
                 name="description"
                 placeholder="Description"
-                className="textarea textarea-bordered w-full mb-4"
+                className="textarea textarea-bordered w-full mb-1"
                 value={newPost.description}
                 onChange={handleNewPostChange}
               />
+              {validationErrors.description && (
+                <p className="text-red-500 text-sm mb-4">
+                  {validationErrors.description}
+                </p>
+              )}
+
               <input
                 type="file"
                 name="image"
                 accept="image/*"
-                className="file-input file-input-bordered w-full mb-4"
+                className="file-input file-input-bordered w-full mb-1"
                 onChange={handleNewPostChange}
               />
+              {validationErrors.image && (
+                <p className="text-red-500 text-sm mb-4">
+                  {validationErrors.image}
+                </p>
+              )}
+
               {addPostError && (
                 <p className="text-red-500 text-sm my-2">{addPostError}</p>
               )}
+
               <button
                 className={`btn btn-primary  ${addPostLoader ? "loading" : ""}`}
                 onClick={handleAddPostSubmit}

@@ -3,44 +3,63 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import Joi from 'joi';
 import toast from 'react-hot-toast';
+import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai'; 
 
 const Login = (props) => {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
-  const [error, setError] = useState(null);
+  const [emailError, setEmailError] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
+  const [backendError, setBackendError] = useState(null); 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate(); 
+  const [showPassword, setShowPassword] = useState(false); 
+
+
   const schema = Joi.object({
-    email:  Joi.string()
-    .email({ tlds: { allow: false } }) 
-    .required()
-    .messages({
-      "string.base": "Email must be a string.",
+    email: Joi.string()
+      .email({ tlds: { allow: false } })
+      .required()
+      .messages({
+        "string.base": "Email must be a string.",
         "string.email": "Email must be a valid email address.",
         "string.empty": "Email is required.",
         "any.required": "Email is required.",
-    }),
+      }),
     password: Joi.string().required()
       .messages({
         "string.base": "Password must be a string.",
         "string.empty": "Password is required.",
         "any.required": "Password is required.",
       }),
-  })
+  });
+
   const handleLogin = async (e) => {
     e.preventDefault();
     const email = emailRef.current.value;
     const password = passwordRef.current.value;
-    const { error: validationError } = schema.validate({ email, password });
+    const { error: validationError } = schema.validate({ email, password }, { abortEarly: false });
+
+    let emailErr = null;
+    let passwordErr = null;
+
     if (validationError) {
-      setError(validationError.details[0].message);
+      validationError.details.forEach(detail => {
+        if (detail.path[0] === 'email') emailErr = detail.message;
+        if (detail.path[0] === 'password') passwordErr = detail.message;
+      });
+      setEmailError(emailErr);
+      setPasswordError(passwordErr);
       return;
     }
+
     setLoading(true);
-    setError(null);
-  
+    setEmailError(null);
+    setPasswordError(null);
+    setBackendError(null); 
+
     const loginRequest = axios.post(`${props.url}/login`, { email, password });
-  
+
     toast.promise(loginRequest, {
       loading: "Logging in...",
       success: "Login successful!",
@@ -53,12 +72,11 @@ const Login = (props) => {
       props.setIsLogin(true); 
       navigate('/home', { replace: true }); 
     }).catch((error) => {
-      setError(error.response?.data?.message || 'Login failed');
+      setBackendError(error.response?.data?.message || 'Login failed'); 
     }).finally(() => {
       setLoading(false);
     });
   };
-  
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{
@@ -79,27 +97,43 @@ const Login = (props) => {
                 ref={emailRef}
                 type="text"
                 placeholder="Enter your email"
-                className="input input-bordered"
-                onFocus={() => setError(null)} 
+                className={`input input-bordered ${emailError ? 'input-error' : ''}`}
+                onFocus={() => {setEmailError(null);setBackendError(null)}}
               />
+              {emailError && (
+                <span className="text-red-500 text-sm mt-1">{emailError}</span>
+              )}
             </div>
             <div className="form-control mt-4">
               <label className="label">
                 <span className="label-text">Password</span>
               </label>
-              <input
-                ref={passwordRef}
-                type="password"
-                placeholder="Enter your password"
-                className="input input-bordered"
-                onFocus={() => setError(null)} 
-              />
+              <div className="relative">
+                <input
+                  ref={passwordRef}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  className={`input input-bordered w-full ${passwordError  ? 'input-error' : ''}`}
+                  onFocus={() => {setPasswordError(null);setBackendError(null)}}
+                />
+                <span
+                  className="absolute inset-y-0 right-3 flex items-center cursor-pointer"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <AiFillEyeInvisible size={24} /> : <AiFillEye size={24} />}
+                </span>
+              </div>
+              {passwordError && (
+                <span className="text-red-500 text-sm mt-1">{passwordError}</span>
+              )}
             </div>
-            {error && (
+            
+            {backendError && (
               <div className="text-red-500 mt-4">
-                {error}
+                {backendError}
               </div>
             )}
+
             <div className="form-control mt-6">
               <button
                 type="submit"
@@ -111,9 +145,9 @@ const Login = (props) => {
             </div>
           </form>
           <div className="text-center mt-4">
-          <span>I don't have an account </span>
+            <span>I don't have an account </span>
             <Link to='/signup' className="link link-primary">
-               Sign Up now
+              Sign Up now
             </Link>
           </div>
         </div>
